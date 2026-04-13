@@ -36,15 +36,19 @@ def add_features(df: pd.DataFrame) -> pd.DataFrame:
     feat["ma_5"] = ma_5
     feat["ma_20"] = ma_20
     feat["ma_50"] = ma_50
-    feat["price_to_ma20"] = df["Close"] / ma_20
-    feat["price_to_ma50"] = df["Close"] / ma_50
-    feat["ma_ratio_5_20"] = ma_5 / ma_20
-
+    
     # --- Volatility features ---
     feat["vol_5"] = feat["ret_1d"].rolling(5).std()
     feat["vol_10"] = feat["ret_1d"].rolling(10).std()
     feat["vol_20"] = feat["ret_1d"].rolling(20).std()
     feat["vol_ratio"] = feat["vol_5"] / feat["vol_20"]
+
+    # --- Lagged realized volatility (mirrors target: sqrt(mean(r^2)), no look-ahead) ---
+    # rv_5[t] = RV over [t-4..t], so shift(k) lags it k days into the past
+    rv_5 = np.sqrt(feat["ret_1d"].pow(2).rolling(5).mean())
+    feat["rv_lag1"] = rv_5.shift(1)   # RV ending yesterday
+    feat["rv_lag2"] = rv_5.shift(2)   # RV ending 2 days ago
+    feat["rv_lag5"] = rv_5.shift(5)   # RV ending 5 days ago (non-overlapping)
 
     # --- Range and candle features ---
     feat["hl_range"] = (df["High"] - df["Low"]) / df["Close"]

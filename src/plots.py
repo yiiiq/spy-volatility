@@ -81,39 +81,47 @@ def plot_lstm_loss(train_losses: list[float], val_losses: list[float]) -> None:
     _savefig("lstm_loss_curve.png")
 
 
-def plot_metrics_comparison(
-    metrics_baseline: dict, metrics_xgb: dict, metrics_lstm: dict
+def plot_metric_comparison(
+    metric_name: str,
+    metrics_baseline: dict,
+    metrics_xgb: dict,
+    metrics_lstm: dict,
 ) -> None:
-    """Bar chart comparing MAE, RMSE, and R2 across baseline and both models."""
-    metrics_to_plot = ["MAE", "RMSE", "R2"]
-    x = np.arange(len(metrics_to_plot))
-    width = 0.25
+    """Bar chart comparing one metric across baseline, XGBoost, and LSTM."""
+    model_names = ["Baseline (t-1)", "XGBoost", "LSTM"]
+    values = [
+        metrics_baseline[metric_name],
+        metrics_xgb[metric_name],
+        metrics_lstm[metric_name],
+    ]
+    colors = ["#aaaaaa", "steelblue", "tomato"]
 
-    bl_vals  = [metrics_baseline[m] for m in metrics_to_plot]
-    xgb_vals = [metrics_xgb[m]      for m in metrics_to_plot]
-    lstm_vals = [metrics_lstm[m]    for m in metrics_to_plot]
+    fig, ax = plt.subplots(figsize=(7, 4.5))
+    bars = ax.bar(model_names, values, color=colors)
+    ax.set_title(f"Model Comparison: {metric_name}")
+    ax.set_ylabel(metric_name)
 
-    fig, ax = plt.subplots(figsize=(9, 5))
-    bars0 = ax.bar(x - width,       bl_vals,   width, label="Baseline (t-1)", color="#aaaaaa")
-    bars1 = ax.bar(x,               xgb_vals,  width, label="XGBoost",        color="steelblue")
-    bars2 = ax.bar(x + width,       lstm_vals, width, label="LSTM",            color="tomato")
+    min_val = min(values)
+    max_val = max(values)
+    if metric_name == "R2":
+        lower = min(0.0, min_val - 0.05)
+        upper = max_val + 0.05
+    else:
+        padding = max((max_val - min_val) * 0.15, max_val * 0.08, 1e-6)
+        lower = max(0.0, min_val - padding)
+        upper = max_val + padding
+    ax.set_ylim(lower, upper)
 
-    ax.set_title("Model Comparison: MAE, RMSE, R2")
-    ax.set_xticks(x)
-    ax.set_xticklabels(metrics_to_plot)
-    ax.legend()
-
-    # Annotate bars
-    for bar in list(bars0) + list(bars1) + list(bars2):
-        h = bar.get_height()
+    for bar, value in zip(bars, values):
         ax.annotate(
-            f"{h:.4f}",
-            xy=(bar.get_x() + bar.get_width() / 2, h),
+            f"{value:.4f}",
+            xy=(bar.get_x() + bar.get_width() / 2, value),
             xytext=(0, 3),
             textcoords="offset points",
             ha="center",
             va="bottom",
-            fontsize=7,
+            fontsize=8,
         )
 
-    _savefig("metrics_comparison.png")
+    filename = f"metric_{metric_name.lower()}.png"
+    _savefig(filename)

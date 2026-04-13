@@ -9,7 +9,7 @@ import os
 import numpy as np
 import pandas as pd
 
-from src.utils import set_seed, split_train_test, compute_metrics
+from src.utils import set_seed, split_train_test, compute_metrics, select_features
 from src.data import load_data
 from src.features import add_features
 from src.target import make_target, TARGET_COL
@@ -20,11 +20,12 @@ from src.plots import (
     plot_feature_importance,
     plot_predictions,
     plot_lstm_loss,
-    plot_metrics_comparison,
+    plot_metric_comparison,
 )
 
 SPLIT_DATE = "2022-01-01"
 METRICS_PATH = "results/metrics.csv"
+MAX_FEATURES = 10
 
 
 def main() -> None:
@@ -71,6 +72,13 @@ def main() -> None:
     X_test = test_df.drop(columns=[TARGET_COL])
     y_test = test_df[TARGET_COL]
 
+    X_train, X_test, selected_features, _ = select_features(
+        X_train,
+        y_train,
+        X_test,
+        max_features=MAX_FEATURES,
+    )
+
     # Naive baseline: predict today's volatility = yesterday's realized volatility
     # target_vol is already on the combined index, so shift(1) gives last-known value.
     baseline_pred = combined[TARGET_COL].shift(1).reindex(y_test.index).values
@@ -111,7 +119,7 @@ def main() -> None:
     # ------------------------------------------------------------------
     print("\n--- Saving plots ---")
 
-    plot_feature_importance(xgb_model, list(X_train.columns))
+    plot_feature_importance(xgb_model, selected_features)
 
     plot_predictions(
         index=X_test.index,
@@ -141,7 +149,9 @@ def main() -> None:
         filename="predictions_baseline.png",
     )
 
-    plot_metrics_comparison(baseline_metrics, xgb_metrics, lstm_metrics)
+    plot_metric_comparison("MAE", baseline_metrics, xgb_metrics, lstm_metrics)
+    plot_metric_comparison("RMSE", baseline_metrics, xgb_metrics, lstm_metrics)
+    plot_metric_comparison("R2", baseline_metrics, xgb_metrics, lstm_metrics)
 
     print("\nDone. All results saved to results/")
 
